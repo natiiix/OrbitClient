@@ -29,35 +29,19 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.textBoxInput = new System.Windows.Forms.TextBox();
-            this.textBoxOutput = new System.Windows.Forms.TextBox();
             this.labelLatency = new System.Windows.Forms.Label();
             this.timerUpdate = new System.Windows.Forms.Timer(this.components);
+            this.pictureBoxMap = new System.Windows.Forms.PictureBox();
+            this.timerGetMap = new System.Windows.Forms.Timer(this.components);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxMap)).BeginInit();
             this.SuspendLayout();
-            // 
-            // textBoxInput
-            // 
-            this.textBoxInput.Location = new System.Drawing.Point(12, 63);
-            this.textBoxInput.Name = "textBoxInput";
-            this.textBoxInput.Size = new System.Drawing.Size(749, 31);
-            this.textBoxInput.TabIndex = 0;
-            this.textBoxInput.TextChanged += new System.EventHandler(this.textBoxInput_TextChanged);
-            // 
-            // textBoxOutput
-            // 
-            this.textBoxOutput.Location = new System.Drawing.Point(13, 100);
-            this.textBoxOutput.Multiline = true;
-            this.textBoxOutput.Name = "textBoxOutput";
-            this.textBoxOutput.ReadOnly = true;
-            this.textBoxOutput.Size = new System.Drawing.Size(749, 207);
-            this.textBoxOutput.TabIndex = 1;
             // 
             // labelLatency
             // 
             this.labelLatency.AutoSize = true;
-            this.labelLatency.Location = new System.Drawing.Point(12, 495);
+            this.labelLatency.Location = new System.Drawing.Point(12, 439);
             this.labelLatency.Name = "labelLatency";
-            this.labelLatency.Size = new System.Drawing.Size(88, 25);
+            this.labelLatency.Size = new System.Drawing.Size(45, 13);
             this.labelLatency.TabIndex = 2;
             this.labelLatency.Text = "Latency";
             // 
@@ -65,27 +49,41 @@
             // 
             this.timerUpdate.Tick += new System.EventHandler(this.timerUpdate_Tick);
             // 
+            // pictureBoxMap
+            // 
+            this.pictureBoxMap.BackColor = System.Drawing.SystemColors.Control;
+            this.pictureBoxMap.Location = new System.Drawing.Point(13, 13);
+            this.pictureBoxMap.Name = "pictureBoxMap";
+            this.pictureBoxMap.Size = new System.Drawing.Size(500, 400);
+            this.pictureBoxMap.TabIndex = 3;
+            this.pictureBoxMap.TabStop = false;
+            this.pictureBoxMap.MouseClick += new System.Windows.Forms.MouseEventHandler(this.pictureBoxMap_MouseClick);
+            // 
+            // timerGetMap
+            // 
+            this.timerGetMap.Interval = 500;
+            this.timerGetMap.Tick += new System.EventHandler(this.timerGetMap_Tick);
+            // 
             // FormMain
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(774, 529);
+            this.ClientSize = new System.Drawing.Size(584, 461);
+            this.Controls.Add(this.pictureBoxMap);
             this.Controls.Add(this.labelLatency);
-            this.Controls.Add(this.textBoxOutput);
-            this.Controls.Add(this.textBoxInput);
             this.Name = "FormMain";
             this.Text = "Orbit";
             this.Load += new System.EventHandler(this.FormMain_Load);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBoxMap)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.TextBox textBoxInput;
-        private System.Windows.Forms.TextBox textBoxOutput;
         private System.Windows.Forms.Label labelLatency;
         private System.Windows.Forms.Timer timerUpdate;
+        private System.Windows.Forms.PictureBox pictureBoxMap;
+        private System.Windows.Forms.Timer timerGetMap;
     }
 }
 

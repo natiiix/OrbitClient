@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using NatiTools.xWeb;
-using NatiTools.xCSharp;
 
 namespace Orbit
 {
@@ -17,10 +16,14 @@ namespace Orbit
         private const string SERVER_URL = "http://orbit.6f.sk";
         private const string RESPONSE_END_SIGN = "<!--END-->";
         private const char DATA_SEPARATOR = ';';
+        private const int MAP_WIDTH = 500;
+        private const int MAP_HEIGHT = 400;
 
-        private static string strOutput = string.Empty;
-        private static string strLatency = "Latency";
+        private static string MAC_ADDRESS = GetMacAddress();
+
         private static DateTime dtLastUpdate = DateTime.Now;
+        private static string strLatency = "Latency";
+        private static Bitmap bmpMap;
 
         public FormMain()
         {
@@ -30,18 +33,104 @@ namespace Orbit
         private void FormMain_Load(object sender, EventArgs e)
         {
             timerUpdate.Start();
+            timerGetMap.Start();
         }
 
-        private void UpdateTranslation()
+        private void RequestMove(int x, int y)
         {
             // Put data into objects
-            HTTP.PostData pdType = new HTTP.PostData("type", "send");
-            HTTP.PostData pdData = new HTTP.PostData("data", StringTools.Base64Encode(textBoxInput.Text));
+            HTTP.PostData pdId = new HTTP.PostData("id", MAC_ADDRESS);
+            HTTP.PostData pdAction = new HTTP.PostData("action", "move");
+            HTTP.PostData pdData = new HTTP.PostData("data", x.ToString() + ";" + y.ToString());
+            
+            // Send the move request
+            HTTP.GetPostResponse(SERVER_URL, pdId, pdAction, pdData);
+        }
+
+        private string ExtractData(string strResponse)
+        {
+            // Get the part of the response before the end sign
+            return strResponse.Substring(0, strResponse.IndexOf(RESPONSE_END_SIGN));
+        }
+
+        private void timerUpdate_Tick(object sender, EventArgs e)
+        {
+            labelLatency.Text = strLatency;
+            pictureBoxMap.Image = bmpMap;
+        }
+
+        private void timerGetMap_Tick(object sender, EventArgs e)
+        {
+            Task.Run(() => UpdateMap());
+        }
+
+        private void pictureBoxMap_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                // Send move request to the server
+                Task.Run(() => RequestMove(e.X, e.Y));
+            }
+        }
+
+        private static string GetMacAddress()
+        {
+            return (
+                from nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                where nic.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
+                select nic.GetPhysicalAddress().ToString()
+            ).FirstOrDefault();
+        }
+
+        private void UpdateMap()
+        {
+            string strData = RequestRead();
+
+            if (strData == null)
+            {
+                return;
+            }
+
+            Bitmap mapTmp = new Bitmap(MAP_WIDTH, MAP_HEIGHT);
+
+            using (Graphics g = Graphics.FromImage(mapTmp))
+            {
+                g.FillRectangle(new SolidBrush(Color.Black), new Rectangle(0, 0, MAP_WIDTH, MAP_HEIGHT));
+            }
+
+            string[] rows = strData.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string strRow in rows)
+            {
+                string[] coordinates = strRow.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (coordinates.Length == 2)
+                {
+                    if (int.TryParse(coordinates[0], out int x) && int.TryParse(coordinates[1], out int y))
+                    {
+                        mapTmp.SetPixel(x, y, Color.White);
+                    }
+                }
+            }
+
+            if (bmpMap != null)
+            {
+                bmpMap.Dispose();
+            }
+
+            bmpMap = mapTmp;
+        }
+
+        private string RequestRead()
+        {
+            // Put data into objects
+            HTTP.PostData pdId = new HTTP.PostData("id", MAC_ADDRESS);
+            HTTP.PostData pdAction = new HTTP.PostData("action", "read");
 
             // Get current time
             DateTime dtSendTime = DateTime.Now;
             // Send the request and process the output
-            string strOutputTemp = string.Join("\n", ExtractData(HTTP.GetPostResponse(SERVER_URL, pdType, pdData)));
+            string strDataTmp = ExtractData(HTTP.GetPostResponse(SERVER_URL, pdId, pdAction));
             // Calculate the server response latency
             TimeSpan tsLatency = (DateTime.Now - dtSendTime);
 
@@ -52,31 +141,14 @@ namespace Orbit
             if (dtLastUpdate < dtSendTime)
             {
                 dtLastUpdate = dtSendTime;
-
-                strOutput = strOutputTemp;
                 strLatency = strLatencyTemp;
+                return strDataTmp;
             }
-        }
-
-        private string[] ExtractData(string strResponse)
-        {
-            // Get the part of response before the end sign
-            string strData = strResponse.Substring(0, strResponse.IndexOf(RESPONSE_END_SIGN));
-            // Decode response string from Base64
-            string strDecoded = StringTools.Base64Decode(strData);
-            // Split the data by separator character and return the resulting string array
-            return strDecoded.Split(new char[] { DATA_SEPARATOR }, StringSplitOptions.RemoveEmptyEntries);
-        }
-
-        private void timerUpdate_Tick(object sender, EventArgs e)
-        {
-            textBoxOutput.Text = strOutput;
-            labelLatency.Text = strLatency;
-        }
-
-        private void textBoxInput_TextChanged(object sender, EventArgs e)
-        {
-            Task.Run(() => UpdateTranslation());
+            // Data are outdated
+            else
+            {
+                return null;
+            }
         }
     }
 }
