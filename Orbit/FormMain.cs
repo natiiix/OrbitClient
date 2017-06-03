@@ -13,17 +13,18 @@ namespace Orbit
 {
     public partial class FormMain : Form
     {
+        // Constants
         private const string SERVER_URL = "http://orbit.6f.sk";
         private const string RESPONSE_END_SIGN = "<!--END-->";
         private const char DATA_SEPARATOR = ';';
-        private const int MAP_WIDTH = 500;
-        private const int MAP_HEIGHT = 400;
 
         private static string MAC_ADDRESS = GetMacAddress();
 
-        private static DateTime dtLastUpdate = DateTime.Now;
-        private static string strLatency = "Latency";
-        private static Bitmap bmpMap;
+        // Static members
+        private static DateTime m_dtLastUpdate = DateTime.Now;
+        private static double m_latency = 0.0;
+        private static Player[] m_players = new Player[0];
+        private static Player m_self = new Player(0, 0);
 
         public FormMain()
         {
@@ -32,7 +33,7 @@ namespace Orbit
 
         private void FormMain_Load(object sender, EventArgs e)
         {
-            timerUpdate.Start();
+            timerUpdateUI.Start();
             timerGetMap.Start();
         }
 
@@ -53,15 +54,25 @@ namespace Orbit
             return strResponse.Substring(0, strResponse.IndexOf(RESPONSE_END_SIGN));
         }
 
-        private void timerUpdate_Tick(object sender, EventArgs e)
+        private void timerUpdateUI_Tick(object sender, EventArgs e)
         {
-            labelLatency.Text = strLatency;
-            pictureBoxMap.Image = bmpMap;
+            // Start measuring render time
+            DateTime dtStart = DateTime.Now;
+
+            // Update the UI
+            labelLatency.Text = "Latency: " + m_latency.ToString("0") + " ms";
+            pictureBoxMap.Image = GenerateMap();
+
+            // Calculate the render time
+            TimeSpan tsRenderTime = (DateTime.Now - dtStart);
+
+            // Update the render time display
+            labelRenderTime.Text = "Render Time: " + tsRenderTime.TotalMilliseconds.ToString("0.000") + " ms";
         }
 
         private void timerGetMap_Tick(object sender, EventArgs e)
         {
-            Task.Run(() => UpdateMap());
+            Task.Run(() => RequestRead());
         }
 
         private void pictureBoxMap_MouseClick(object sender, MouseEventArgs e)
@@ -75,53 +86,36 @@ namespace Orbit
 
         private static string GetMacAddress()
         {
-            return (
-                from nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
-                where nic.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
-                select nic.GetPhysicalAddress().ToString()
-            ).FirstOrDefault();
+            // https://stackoverflow.com/a/7661829/3043260
+
+            return (from nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                    where nic.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
+                    select nic.GetPhysicalAddress().ToString()
+                    ).FirstOrDefault();
         }
 
-        private void UpdateMap()
+        private Bitmap GenerateMap()
         {
-            string strData = RequestRead();
+            // Create new bitmap
+            Bitmap bmpMap = new Bitmap(pictureBoxMap.Width, pictureBoxMap.Height);
 
-            if (strData == null)
+            // Fill the bitmap with the background color
+            using (Graphics g = Graphics.FromImage(bmpMap))
             {
-                return;
+                g.FillRectangle(new SolidBrush(Color.Black), new Rectangle(0, 0, bmpMap.Width, bmpMap.Height));
             }
 
-            Bitmap mapTmp = new Bitmap(MAP_WIDTH, MAP_HEIGHT);
-
-            using (Graphics g = Graphics.FromImage(mapTmp))
+            // Draw dots representing players to the map
+            foreach (Player p in m_players)
             {
-                g.FillRectangle(new SolidBrush(Color.Black), new Rectangle(0, 0, MAP_WIDTH, MAP_HEIGHT));
+                bmpMap.SetPixel(p.X, p.Y, Color.White);
             }
-
-            string[] rows = strData.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (string strRow in rows)
-            {
-                string[] coordinates = strRow.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-
-                if (coordinates.Length == 2)
-                {
-                    if (int.TryParse(coordinates[0], out int x) && int.TryParse(coordinates[1], out int y))
-                    {
-                        mapTmp.SetPixel(x, y, Color.White);
-                    }
-                }
-            }
-
-            if (bmpMap != null)
-            {
-                bmpMap.Dispose();
-            }
-
-            bmpMap = mapTmp;
+            
+            // Return the generated map bitmap
+            return bmpMap;
         }
 
-        private string RequestRead()
+        private void RequestRead()
         {
             // Put data into objects
             HTTP.PostData pdId = new HTTP.PostData("id", MAC_ADDRESS);
@@ -134,20 +128,40 @@ namespace Orbit
             // Calculate the server response latency
             TimeSpan tsLatency = (DateTime.Now - dtSendTime);
 
-            string strLatencyTemp = "Latency: " + tsLatency.TotalMilliseconds.ToString("0") + " ms";
+            bool dataOK = true;
 
-            // Make sure to use the most recent data
-            // When data from older request than the last handled one returns ignore it
-            if (dtLastUpdate < dtSendTime)
+            // Separate rows
+            string[] rows = strDataTmp.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            Player[] tempPlayers = new Player[rows.Length];
+
+            for (int i = 0; i < rows.Length; i++)
             {
-                dtLastUpdate = dtSendTime;
-                strLatency = strLatencyTemp;
-                return strDataTmp;
+                // Separate individual coordinates on each row
+                string[] coordinates = rows[i].Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+                // There are two coordinates and their values are supposed to be integer
+                if (coordinates.Length == 2 &&
+                    int.TryParse(coordinates[0], out int x) &&
+                    int.TryParse(coordinates[1], out int y))
+                {
+                    // Store the player in the array
+                    tempPlayers[i] = new Player(x, y);
+                }
+                else
+                {
+                    // There is an error in the data string, something isn't right
+                    dataOK = false;
+                }
             }
-            // Data are outdated
-            else
+
+            // Use the most recent data
+            // When data from older request than the last handled one returns ignore it
+            // Check for data string not being broken
+            if (m_dtLastUpdate < dtSendTime && dataOK)
             {
-                return null;
+                m_dtLastUpdate = dtSendTime;
+                m_latency = tsLatency.TotalMilliseconds;
+                m_players = tempPlayers;
             }
         }
     }

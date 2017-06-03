@@ -30,9 +30,10 @@
         {
             this.components = new System.ComponentModel.Container();
             this.labelLatency = new System.Windows.Forms.Label();
-            this.timerUpdate = new System.Windows.Forms.Timer(this.components);
+            this.timerUpdateUI = new System.Windows.Forms.Timer(this.components);
             this.pictureBoxMap = new System.Windows.Forms.PictureBox();
             this.timerGetMap = new System.Windows.Forms.Timer(this.components);
+            this.labelRenderTime = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxMap)).BeginInit();
             this.SuspendLayout();
             // 
@@ -45,9 +46,9 @@
             this.labelLatency.TabIndex = 2;
             this.labelLatency.Text = "Latency";
             // 
-            // timerUpdate
+            // timerUpdateUI
             // 
-            this.timerUpdate.Tick += new System.EventHandler(this.timerUpdate_Tick);
+            this.timerUpdateUI.Tick += new System.EventHandler(this.timerUpdateUI_Tick);
             // 
             // pictureBoxMap
             // 
@@ -64,12 +65,23 @@
             this.timerGetMap.Interval = 500;
             this.timerGetMap.Tick += new System.EventHandler(this.timerGetMap_Tick);
             // 
+            // labelRenderTime
+            // 
+            this.labelRenderTime.AutoSize = true;
+            this.labelRenderTime.Location = new System.Drawing.Point(12, 426);
+            this.labelRenderTime.Name = "labelRenderTime";
+            this.labelRenderTime.Size = new System.Drawing.Size(68, 13);
+            this.labelRenderTime.TabIndex = 4;
+            this.labelRenderTime.Text = "Render Time";
+            // 
             // FormMain
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(584, 461);
+            this.Controls.Add(this.labelRenderTime);
             this.Controls.Add(this.pictureBoxMap);
             this.Controls.Add(this.labelLatency);
+            this.DoubleBuffered = true;
             this.Name = "FormMain";
             this.Text = "Orbit";
             this.Load += new System.EventHandler(this.FormMain_Load);
@@ -81,9 +93,10 @@
 
         #endregion
         private System.Windows.Forms.Label labelLatency;
-        private System.Windows.Forms.Timer timerUpdate;
+        private System.Windows.Forms.Timer timerUpdateUI;
         private System.Windows.Forms.PictureBox pictureBoxMap;
         private System.Windows.Forms.Timer timerGetMap;
+        private System.Windows.Forms.Label labelRenderTime;
     }
 }
 
