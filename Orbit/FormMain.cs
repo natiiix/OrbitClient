@@ -17,7 +17,6 @@ namespace Orbit
         private const string SERVER_URL = "http://orbit.6f.sk";
         private const string RESPONSE_END_SIGN = "<!--END-->";
         private const char DATA_SEPARATOR = ';';
-        private const int RENDER_TIME_SAMPLES = 7;
 
         private static string MAC_ADDRESS = GetMacAddress();
 
@@ -25,12 +24,11 @@ namespace Orbit
         private static DateTime m_dtLastUpdate = DateTime.Now;
         private static double m_latency = 0.0;
         private static Player[] m_players = new Player[0];
-        private static bool m_readComplete = true;
         //private static Player m_self = new Player(0, 0);
 
         // Instance members
-        private double[] m_renderTimes = new double[RENDER_TIME_SAMPLES];
-        private int m_renderTimesIdx = 0;
+        Sampler<double> m_samplerLatency = new Sampler<double>(5);
+        Sampler<double> m_samplerRenderTime = new Sampler<double>(10);
 
         public FormMain()
         {
@@ -39,8 +37,24 @@ namespace Orbit
 
         private void FormMain_Load(object sender, EventArgs e)
         {
+            m_samplerLatency.OnSamplerOverflow += samplerLatency_OnSamplerOverflow;
+            m_samplerRenderTime.OnSamplerOverflow += samplerRenderTime_OnSamplerOverflow;
+
             timerUpdateUI.Start();
-            timerGetMap.Start();
+            Task.Run(() => RequestRead());
+        }
+
+        private void samplerLatency_OnSamplerOverflow(object sender, SamplerEventArgs<double> e)
+        {
+            // Update the average latency variable
+            m_latency = e.AverageValue;
+        }
+
+        private void samplerRenderTime_OnSamplerOverflow(object sender, SamplerEventArgs<double> e)
+        {
+            // Update the FPS counter
+            // Avoid division by zero when the total render time is zero
+            labelFPS.Text = "FPS: " + (e.AverageValue > 0 ? (1 / e.AverageValue).ToString("0") : "infinite");
         }
 
         private void RequestMove(int x, int y)
@@ -80,44 +94,8 @@ namespace Orbit
 
             // ---- RENDER END ----
 
-            // Calculate the render time
-            TimeSpan tsRenderTime = (DateTime.Now - dtStart);
-
-            // Update the render time display
-            m_renderTimes[m_renderTimesIdx++] = tsRenderTime.TotalSeconds;
-
-            // Index overflow
-            if (m_renderTimesIdx == RENDER_TIME_SAMPLES)
-            {
-                // Reset the index
-                m_renderTimesIdx = 0;
-
-                // Get the total render time
-                double totalRenderTime = m_renderTimes.Sum();
-
-                string strFps = string.Empty;
-
-                // Avoid division by zero when the total render time is zero
-                if (totalRenderTime > 0.0)
-                {
-                    strFps = (RENDER_TIME_SAMPLES / totalRenderTime).ToString("0");
-                }
-                else
-                {
-                    strFps = "infinite";
-                }
-
-                // Update the FPS counter
-                labelFPS.Text = "FPS: " + strFps;
-            }
-        }
-
-        private void timerGetMap_Tick(object sender, EventArgs e)
-        {
-            if (m_readComplete)
-            {
-                Task.Run(() => RequestRead());
-            }
+            // Calculate the render time and push it to the sampler
+            m_samplerRenderTime.Push((DateTime.Now - dtStart).TotalSeconds);
         }
 
         private void pictureBoxMap_MouseClick(object sender, MouseEventArgs e)
@@ -162,8 +140,6 @@ namespace Orbit
 
         private void RequestRead()
         {
-            m_readComplete = false;
-
             // Put data into objects
             HTTP.PostData pdId = new HTTP.PostData("id", MAC_ADDRESS);
             HTTP.PostData pdAction = new HTTP.PostData("action", "read");
@@ -173,7 +149,7 @@ namespace Orbit
             // Send the request and process the output
             string strDataTmp = ExtractData(HTTP.GetPostResponse(SERVER_URL, pdId, pdAction));
             // Calculate the server response latency
-            TimeSpan tsLatency = (DateTime.Now - dtSendTime);
+            m_samplerLatency.Push((DateTime.Now - dtSendTime).TotalMilliseconds);
 
             bool dataOK = true;
 
@@ -207,11 +183,11 @@ namespace Orbit
             if (m_dtLastUpdate < dtSendTime && dataOK)
             {
                 m_dtLastUpdate = dtSendTime;
-                m_latency = tsLatency.TotalMilliseconds;
                 m_players = tempPlayers;
             }
 
-            m_readComplete = true;
+            // Send another read request asynchronously
+            Task.Run(() => RequestRead());
         }
     }
 }

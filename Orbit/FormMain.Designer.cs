@@ -32,7 +32,6 @@
             this.labelLatency = new System.Windows.Forms.Label();
             this.timerUpdateUI = new System.Windows.Forms.Timer(this.components);
             this.pictureBoxMap = new System.Windows.Forms.PictureBox();
-            this.timerGetMap = new System.Windows.Forms.Timer(this.components);
             this.labelFPS = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxMap)).BeginInit();
             this.SuspendLayout();
@@ -59,11 +58,6 @@
             this.pictureBoxMap.TabIndex = 3;
             this.pictureBoxMap.TabStop = false;
             this.pictureBoxMap.MouseClick += new System.Windows.Forms.MouseEventHandler(this.pictureBoxMap_MouseClick);
-            // 
-            // timerGetMap
-            // 
-            this.timerGetMap.Interval = 500;
-            this.timerGetMap.Tick += new System.EventHandler(this.timerGetMap_Tick);
             // 
             // labelFPS
             // 
@@ -95,7 +89,6 @@
         private System.Windows.Forms.Label labelLatency;
         private System.Windows.Forms.Timer timerUpdateUI;
         private System.Windows.Forms.PictureBox pictureBoxMap;
-        private System.Windows.Forms.Timer timerGetMap;
         private System.Windows.Forms.Label labelFPS;
     }
 }
