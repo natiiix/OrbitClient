@@ -33,7 +33,7 @@
             this.timerUpdateUI = new System.Windows.Forms.Timer(this.components);
             this.pictureBoxMap = new System.Windows.Forms.PictureBox();
             this.timerGetMap = new System.Windows.Forms.Timer(this.components);
-            this.labelRenderTime = new System.Windows.Forms.Label();
+            this.labelFPS = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxMap)).BeginInit();
             this.SuspendLayout();
             // 
@@ -65,20 +65,20 @@
             this.timerGetMap.Interval = 500;
             this.timerGetMap.Tick += new System.EventHandler(this.timerGetMap_Tick);
             // 
-            // labelRenderTime
+            // labelFPS
             // 
-            this.labelRenderTime.AutoSize = true;
-            this.labelRenderTime.Location = new System.Drawing.Point(12, 426);
-            this.labelRenderTime.Name = "labelRenderTime";
-            this.labelRenderTime.Size = new System.Drawing.Size(68, 13);
-            this.labelRenderTime.TabIndex = 4;
-            this.labelRenderTime.Text = "Render Time";
+            this.labelFPS.AutoSize = true;
+            this.labelFPS.Location = new System.Drawing.Point(12, 426);
+            this.labelFPS.Name = "labelFPS";
+            this.labelFPS.Size = new System.Drawing.Size(27, 13);
+            this.labelFPS.TabIndex = 4;
+            this.labelFPS.Text = "FPS";
             // 
             // FormMain
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(584, 461);
-            this.Controls.Add(this.labelRenderTime);
+            this.Controls.Add(this.labelFPS);
             this.Controls.Add(this.pictureBoxMap);
             this.Controls.Add(this.labelLatency);
             this.DoubleBuffered = true;
@@ -96,7 +96,7 @@
         private System.Windows.Forms.Timer timerUpdateUI;
         private System.Windows.Forms.PictureBox pictureBoxMap;
         private System.Windows.Forms.Timer timerGetMap;
-        private System.Windows.Forms.Label labelRenderTime;
+        private System.Windows.Forms.Label labelFPS;
     }
 }
 
