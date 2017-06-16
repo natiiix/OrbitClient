@@ -24,7 +24,7 @@ namespace Orbit
         private static DateTime m_dtLastUpdate = DateTime.Now;
         private static double m_latency = 0.0;
         private static Player[] m_players = new Player[0];
-        //private static Player m_self = new Player(0, 0);
+        private static Player m_self = new Player(0, 0);
 
         // Instance members
         Sampler<double> m_samplerLatency = new Sampler<double>(5);
@@ -37,20 +37,27 @@ namespace Orbit
 
         private void FormMain_Load(object sender, EventArgs e)
         {
-            m_samplerLatency.OnSamplerOverflow += samplerLatency_OnSamplerOverflow;
-            m_samplerRenderTime.OnSamplerOverflow += samplerRenderTime_OnSamplerOverflow;
+            FillFormWithMap();
 
+            // Make labels display "proper" transparent background
+            labelFPS.Parent = pictureBoxMap;
+            labelLatency.Parent = pictureBoxMap;
+
+            m_samplerLatency.OnSamplerOverflow += SamplerLatency_OnSamplerOverflow;
+            m_samplerRenderTime.OnSamplerOverflow += SamplerRenderTime_OnSamplerOverflow;
+
+            // Start updating UI and reading data from server
             timerUpdateUI.Start();
             Task.Run(() => RequestRead());
         }
 
-        private void samplerLatency_OnSamplerOverflow(object sender, SamplerEventArgs<double> e)
+        private void SamplerLatency_OnSamplerOverflow(object sender, SamplerEventArgs<double> e)
         {
             // Update the average latency variable
             m_latency = e.AverageValue;
         }
 
-        private void samplerRenderTime_OnSamplerOverflow(object sender, SamplerEventArgs<double> e)
+        private void SamplerRenderTime_OnSamplerOverflow(object sender, SamplerEventArgs<double> e)
         {
             // Update the FPS counter
             // Avoid division by zero when the total render time is zero
@@ -67,6 +74,12 @@ namespace Orbit
             // Send the move request
             HTTP.GetPostResponse(SERVER_URL, pdId, pdAction, pdData);
         }
+        
+        private void FillFormWithMap()
+        {
+            // Makes the map picture box fill the entire area of the form
+            pictureBoxMap.Bounds = ClientRectangle;
+        }
 
         private string ExtractData(string strResponse)
         {
@@ -74,7 +87,7 @@ namespace Orbit
             return strResponse.Substring(0, strResponse.IndexOf(RESPONSE_END_SIGN));
         }
 
-        private void timerUpdateUI_Tick(object sender, EventArgs e)
+        private void TimerUpdateUI_Tick(object sender, EventArgs e)
         {
             // Start measuring render time
             DateTime dtStart = DateTime.Now;
@@ -98,12 +111,15 @@ namespace Orbit
             m_samplerRenderTime.Push((DateTime.Now - dtStart).TotalSeconds);
         }
 
-        private void pictureBoxMap_MouseClick(object sender, MouseEventArgs e)
+        private void PictureBoxMap_MouseClick(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
                 // Send move request to the server
                 Task.Run(() => RequestMove(e.X, e.Y));
+
+                // Move the player locally
+                m_self.Move(e.X, e.Y);
             }
         }
 
@@ -188,6 +204,34 @@ namespace Orbit
 
             // Send another read request asynchronously
             Task.Run(() => RequestRead());
+        }
+
+        private void LabelFPS_MouseClick(object sender, MouseEventArgs e)
+        {
+            ClickThroughLabel(labelFPS, sender, e);
+        }
+
+        private void LabelLatency_MouseClick(object sender, MouseEventArgs e)
+        {
+            ClickThroughLabel(labelLatency, sender, e);
+        }
+
+        private void LabelLocation_MouseClick(object sender, MouseEventArgs e)
+        {
+            ClickThroughLabel(labelLocation, sender, e);
+        }
+
+        private void ClickThroughLabel(Label label, object sender, MouseEventArgs e)
+        {
+            // Redirect the mouse click event to the map picture box with proper click location information
+            MouseEventArgs evArgs = new MouseEventArgs(e.Button, e.Clicks, e.X + label.Location.X, e.Y + label.Location.Y, e.Delta);
+            PictureBoxMap_MouseClick(sender, evArgs);
+        }
+
+        private void FormMain_Resize(object sender, EventArgs e)
+        {
+            // Change the size of the map when the form is resized
+            FillFormWithMap();
         }
     }
 }
